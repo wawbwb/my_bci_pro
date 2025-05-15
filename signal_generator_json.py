@@ -62,3 +62,8 @@ class SignalGeneratorJsonx(object):
         json_data = self.json_data_template
         json_data["eeg"] = ss_int.tolist()
         return json.dumps(json_data)
+
+
+if __name__ == '__main__':
+    sg = SignalGeneratorJsonx()
+    print(sg.get_json_array())

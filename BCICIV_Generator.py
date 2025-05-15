@@ -251,7 +251,7 @@ def main():
     display.print_data_info()  
     
     # 可视化数据
-    display.plot_eeg_signals()
+    # display.plot_eeg_signals()
     
     # 获取提取后的JSON数据
     json_data = display.get_json_array()
@@ -261,7 +261,6 @@ def main():
 
     # 打印JSON数据
     print(json_data)
-  
 
 if __name__ == '__main__':
     main()

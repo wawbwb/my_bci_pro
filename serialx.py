@@ -7,6 +7,7 @@ from PyQt5.QtCore import QObject , pyqtSignal, QByteArray
 import constantValues as cv
 import debugPrinter as dp
 from signal_generator_json import SignalGeneratorJsonx
+from BCICIV_Generator import SignalReadJsonx
 
 
 class SerialX(QObject):
@@ -87,7 +88,9 @@ class SerialX(QObject):
             self.use_simulator=1
             self.evt_serial_cmd.emit(cv.EVT_SERIAL_OPEN_SUC)
             self.simulator_timer.start()
-            self.sj = SignalGeneratorJsonx()
+            #self.sj = SignalGeneratorJsonx()
+            self.sj = SignalReadJsonx()
+
             dp.dpt('use SignalGenerator')
             return 1
 
