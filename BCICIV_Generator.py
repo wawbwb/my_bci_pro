@@ -8,8 +8,8 @@ rcParams['font.sans-serif'] = ['SimHei']  # 设置字体为黑体
 rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 class SignalReadJsonx:
-    DEFAULT_CNT_FILE = 'datasets/BCICIV_1_asc/BCICIV_calib_ds1a_cnt.txt'
-    DEFAULT_MRK_FILE = 'datasets/BCICIV_1_asc/BCICIV_calib_ds1a_mrk.txt'
+    DEFAULT_CNT_FILE = 'datasets/BCICIV_1_asc/BCICIV_calib_ds1b_cnt.txt'
+    DEFAULT_MRK_FILE = 'datasets/BCICIV_1_asc/BCICIV_calib_ds1b_mrk.txt'
     
     def __init__(self, channels_to_plot=5, window_size=1000, json_window_size=10, cnt_file=None, mrk_file=None):
         # 使用默认文件路径或自定义路径
@@ -243,10 +243,10 @@ class SignalReadJsonx:
             "mac": "d5:5:82:f0:1e:a",
             "chn": str(len(data_window[0])),  # 通道数
             "pkn": self.packet_counter,  # 使用独立的包序号
-            "eeg": (data_window.flatten() * 5 + 32768).astype(int).tolist(),
+            "eeg": data_window.flatten().astype(int).tolist(),
             "acc": [67, -10, 638, -345]
         }
-        
+        # "eeg": (data_window.flatten() * 5 + 32768).astype(int).tolist(),
         # 增加包序号
         self.packet_counter += 1
         
