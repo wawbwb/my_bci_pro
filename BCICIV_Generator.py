@@ -222,24 +222,33 @@ class SignalReadJsonx:
         """
         selected_data, _ = self.extract_selected_channels()
         
-        # 如果到达数据末尾，重新开始
-        if self.json_current_pos + self.json_window_size >= len(selected_data):
-            self.json_current_pos = 0
-
-        # 获取当前窗口的数据
-        data_window = selected_data[self.json_current_pos:self.json_current_pos + self.json_window_size]
+        # 使用独立的包序号计数器
+        if not hasattr(self, 'packet_counter'):
+            self.packet_counter = 0
         
-        # 构建 JSON 数据
+        # 修改重置逻辑，使用循环方式而不是直接跳回开始
+        if self.json_current_pos + self.json_window_size >= len(selected_data):
+            # 获取剩余数据和需要补充的数据
+            remaining_samples = len(selected_data) - self.json_current_pos
+            data_part1 = selected_data[self.json_current_pos:]
+            data_part2 = selected_data[:self.json_window_size - remaining_samples]
+            data_window = np.concatenate([data_part1, data_part2])
+            self.json_current_pos = self.json_window_size - remaining_samples
+        else:
+            data_window = selected_data[self.json_current_pos:self.json_current_pos + self.json_window_size]
+            self.json_current_pos += self.json_window_size
+
+        # 构建 JSON 数据，使用独立的包序号
         json_data = {
             "mac": "d5:5:82:f0:1e:a",
             "chn": str(len(data_window[0])),  # 通道数
-            "pkn": self.json_current_pos,
-            "eeg": (data_window.flatten() * 5 + 32768).astype(int).tolist(),  # 展平并转换数据
+            "pkn": self.packet_counter,  # 使用独立的包序号
+            "eeg": (data_window.flatten() * 5 + 32768).astype(int).tolist(),
             "acc": [67, -10, 638, -345]
         }
         
-        # 更新位置
-        self.json_current_pos += self.json_window_size
+        # 增加包序号
+        self.packet_counter += 1
         
         return json.dumps(json_data)
 
