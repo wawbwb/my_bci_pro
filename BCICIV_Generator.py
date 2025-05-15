@@ -57,34 +57,64 @@ class SignalReadJsonx:
         # 加载标记数据
         mrk_data = np.loadtxt(mrk_file)
         
-        return cnt_data, mrk_data    
-    
-    def print_data_info(self):
-        """打印数据集的统计信息"""
-        n_trials = len(self.mrk_data)
+        return cnt_data, mrk_data
         
-        # 计算每个类别的试次数
-        class_1_trials = np.sum(self.mrk_data[:, 1] == 1)
-        class_2_trials = np.sum(self.mrk_data[:, 1] == -1)
+    def print_data_info(self, json_data=None):
+        """
+        打印数据集的统计信息
         
-        # 计算信号的基本统计量
-        mean_amplitude = np.mean(self.cnt_data)
-        std_amplitude = np.std(self.cnt_data)
-        max_amplitude = np.max(self.cnt_data)
-        min_amplitude = np.min(self.cnt_data)
-        
-        print("\n=== EEG数据集统计信息 ===")
-        print(f"采样点数: {self.n_samples}")
-        print(f"通道数: {self.n_channels}")
-        print(f"总试次数: {n_trials}")
-        print(f"类别1(手运动想象)试次数: {class_1_trials}")
-        print(f"类别2(脚运动想象)试次数: {class_2_trials}")
-        print("\n信号统计特征:")
-        print(f"平均幅值: {mean_amplitude:.2f}")
-        print(f"标准差: {std_amplitude:.2f}")
-        print(f"最大幅值: {max_amplitude:.2f}")
-        print(f"最小幅值: {min_amplitude:.2f}")
-        print("=====================")
+        参数:
+            json_data: JSON格式的数据字符串(可选)。如果提供，将解析并显示JSON数据的统计信息。
+                    如果不提供，将显示原始数据的统计信息。
+        """
+        if json_data:
+            # 解析JSON数据
+            data_dict = json.loads(json_data)
+            eeg_data = np.array(data_dict['eeg']).reshape(-1, int(data_dict['chn']))
+            
+            print("\n=== JSON数据统计信息 ===")
+            print(f"设备MAC地址: {data_dict['mac']}")
+            print(f"通道数: {data_dict['chn']}")
+            print(f"数据包序号: {data_dict['pkn']}")
+            print(f"采样点数: {len(eeg_data)}")
+            
+            # 计算基本统计量（需要将数据转换回原始值）
+            eeg_data_original = (eeg_data - 32768) / 5
+            mean_amplitude = np.mean(eeg_data_original)
+            std_amplitude = np.std(eeg_data_original)
+            max_amplitude = np.max(eeg_data_original)
+            min_amplitude = np.min(eeg_data_original)
+            
+            print("\n信号统计特征(转换后值):")
+            print(f"平均幅值: {mean_amplitude:.2f}")
+            print(f"标准差: {std_amplitude:.2f}")
+            print(f"最大幅值: {max_amplitude:.2f}")
+            print(f"最小幅值: {min_amplitude:.2f}")
+            print("=====================")
+        else:
+            # 原有的数据统计功能
+            n_trials = len(self.mrk_data)
+            class_1_trials = np.sum(self.mrk_data[:, 1] == 1)
+            class_2_trials = np.sum(self.mrk_data[:, 1] == -1)
+            
+            # 计算信号的基本统计量
+            mean_amplitude = np.mean(self.cnt_data)
+            std_amplitude = np.std(self.cnt_data)
+            max_amplitude = np.max(self.cnt_data)
+            min_amplitude = np.min(self.cnt_data)
+            
+            print("\n=== EEG数据集统计信息 ===")
+            print(f"采样点数: {self.n_samples}")
+            print(f"通道数: {self.n_channels}")
+            print(f"总试次数: {n_trials}")
+            print(f"类别1(手运动想象)试次数: {class_1_trials}")
+            print(f"类别2(脚运动想象)试次数: {class_2_trials}")
+            print("\n信号统计特征:")
+            print(f"平均幅值: {mean_amplitude:.2f}")
+            print(f"标准差: {std_amplitude:.2f}")
+            print(f"最大幅值: {max_amplitude:.2f}")
+            print(f"最小幅值: {min_amplitude:.2f}")
+            print("=====================")
 
     def extract_selected_channels(self):
         """
@@ -156,15 +186,22 @@ class SignalReadJsonx:
         
         plt.suptitle('EEG Signals with Trial Markers (Scrolling View)\nBlue: Class 1 (手运动想象), Red: Class -1 (脚运动想象)')
         
-        return self.axes    
-    
+        return self.axes 
+       
     def plot_eeg_signals(self):
-        """动态显示EEG信号"""
-        # 首先显示数据统计信息
-        self.print_data_info()# 创建动画
+        """
+        动态显示EEG信号
+        
+        参数:
+        cnt_data: EEG信号数据, shape为(samples, channels)
+        mrk_data: 标记数据, shape为(n_trials, 2)
+        channels_to_plot: 要显示的通道数量
+        window_size: 滑动窗口大小（采样点数）
+        """      
+        # 创建动画
         n_frames = self.cnt_data.shape[0] - self.window_size
         ani = FuncAnimation(
-            self.fig,
+            self.fig, 
             self.update,
             init_func=self.init_animation,
             frames=range(0, n_frames, self.window_size//10),  # 每次移动窗口大小的1/10
@@ -206,38 +243,25 @@ class SignalReadJsonx:
         
         return json.dumps(json_data)
 
-    def process_and_visualize(self):
-        """
-        组合处理功能：
-        1. 获取JSON数据
-        2. 显示数据统计信息
-        3. 可视化EEG信号
-        """
-        # 1. 获取JSON数据并打印
-        json_data = self.get_json_array()
-        print("生成的JSON数据:")
-        print(json_data)
-        print("\n")
-        
-        # 2. 显示数据统计信息
-        self.print_data_info()
-        
-        # 3. 可视化EEG信号
-        self.plot_eeg_signals()
-
 def main():
     # 创建实例，使用默认数据文件路径
     display = SignalReadJsonx()
+
+    # 打印数据统计信息
+    display.print_data_info()  
     
     # 可视化数据
-    # display.plot_eeg_signals()
+    display.plot_eeg_signals()
     
-    # 获取JSON数据
+    # 获取提取后的JSON数据
     json_data = display.get_json_array()
-    print(json_data)
 
-    # 处理和可视化数据
-    display.process_and_visualize()
+    # 打印生成的JSON数据统计信息
+    display.print_data_info(json_data)
+
+    # 打印JSON数据
+    print(json_data)
+  
 
 if __name__ == '__main__':
     main()
