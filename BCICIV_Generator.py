@@ -1,21 +1,27 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
-from signal_generator_json import SignalGeneratorJsonx
 from matplotlib.animation import FuncAnimation
 import json
+
 rcParams['font.sans-serif'] = ['SimHei']  # 设置字体为黑体
 rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 class SignalReadJsonx:
-    def __init__(self, cnt_data, mrk_data, channels_to_plot=5, window_size=1000, json_window_size=10):
-        self.cnt_data = cnt_data
-        self.mrk_data = mrk_data
+    DEFAULT_CNT_FILE = 'datasets/BCICIV_1_asc/BCICIV_calib_ds1a_cnt.txt'
+    DEFAULT_MRK_FILE = 'datasets/BCICIV_1_asc/BCICIV_calib_ds1a_mrk.txt'
+    
+    def __init__(self, channels_to_plot=5, window_size=1000, json_window_size=10, cnt_file=None, mrk_file=None):
+        # 使用默认文件路径或自定义路径
+        cnt_file = cnt_file or self.DEFAULT_CNT_FILE
+        mrk_file = mrk_file or self.DEFAULT_MRK_FILE
+        
+        # 加载数据
+        self.cnt_data, self.mrk_data = self.load_data(cnt_file, mrk_file)
         self.channels_to_plot = channels_to_plot
         self.window_size = window_size
-        
-        # 获取采样点数和通道数
-        self.n_samples, self.n_channels = cnt_data.shape
+          # 获取采样点数和通道数
+        self.n_samples, self.n_channels = self.cnt_data.shape
         
         # 选择要显示的通道
         self.selected_channels = np.linspace(0, self.n_channels-1, channels_to_plot, dtype=int)
@@ -28,10 +34,9 @@ class SignalReadJsonx:
         
         # 为每个试次选择不同颜色
         self.colors = ['b', 'r']
-        
-        # 设置y轴范围
-        self.y_min = np.min(cnt_data)
-        self.y_max = np.max(cnt_data)
+          # 设置y轴范围
+        self.y_min = np.min(self.cnt_data)
+        self.y_max = np.max(self.cnt_data)
 
         # SignalReadJsonx相关的属性
         self.json_window_size = json_window_size
@@ -52,27 +57,25 @@ class SignalReadJsonx:
         # 加载标记数据
         mrk_data = np.loadtxt(mrk_file)
         
-        return cnt_data, mrk_data
-
-    @staticmethod
-    def print_data_info(cnt_data, mrk_data):
+        return cnt_data, mrk_data    
+    
+    def print_data_info(self):
         """打印数据集的统计信息"""
-        n_samples, n_channels = cnt_data.shape
-        n_trials = len(mrk_data)
+        n_trials = len(self.mrk_data)
         
         # 计算每个类别的试次数
-        class_1_trials = np.sum(mrk_data[:, 1] == 1)
-        class_2_trials = np.sum(mrk_data[:, 1] == -1)
+        class_1_trials = np.sum(self.mrk_data[:, 1] == 1)
+        class_2_trials = np.sum(self.mrk_data[:, 1] == -1)
         
         # 计算信号的基本统计量
-        mean_amplitude = np.mean(cnt_data)
-        std_amplitude = np.std(cnt_data)
-        max_amplitude = np.max(cnt_data)
-        min_amplitude = np.min(cnt_data)
+        mean_amplitude = np.mean(self.cnt_data)
+        std_amplitude = np.std(self.cnt_data)
+        max_amplitude = np.max(self.cnt_data)
+        min_amplitude = np.min(self.cnt_data)
         
         print("\n=== EEG数据集统计信息 ===")
-        print(f"采样点数: {n_samples}")
-        print(f"通道数: {n_channels}")
+        print(f"采样点数: {self.n_samples}")
+        print(f"通道数: {self.n_channels}")
         print(f"总试次数: {n_trials}")
         print(f"类别1(手运动想象)试次数: {class_1_trials}")
         print(f"类别2(脚运动想象)试次数: {class_2_trials}")
@@ -153,25 +156,15 @@ class SignalReadJsonx:
         
         plt.suptitle('EEG Signals with Trial Markers (Scrolling View)\nBlue: Class 1 (手运动想象), Red: Class -1 (脚运动想象)')
         
-        return self.axes
-
+        return self.axes    
+    
     def plot_eeg_signals(self):
-        """
-        动态显示EEG信号
-        
-        参数:
-        cnt_data: EEG信号数据, shape为(samples, channels)
-        mrk_data: 标记数据, shape为(n_trials, 2)
-        channels_to_plot: 要显示的通道数量
-        window_size: 滑动窗口大小（采样点数）
-        """
+        """动态显示EEG信号"""
         # 首先显示数据统计信息
-        self.print_data_info(self.cnt_data, self.mrk_data)
-        
-        # 创建动画
+        self.print_data_info()# 创建动画
         n_frames = self.cnt_data.shape[0] - self.window_size
         ani = FuncAnimation(
-            self.fig, 
+            self.fig,
             self.update,
             init_func=self.init_animation,
             frames=range(0, n_frames, self.window_size//10),  # 每次移动窗口大小的1/10
@@ -182,61 +175,69 @@ class SignalReadJsonx:
         
         plt.tight_layout()
         plt.show()
-
-    @staticmethod
-    def get_json_array(data, window_size=10, current_pos=0):
-        """
-        根据提取的通道数据生成 JSON 数据。
         
-        参数:
-        data: np.ndarray, 形状为(samples, channels)的EEG数据
-        window_size: int, 每个JSON数据包含的采样点数
-        current_pos: int, 当前数据的起始位置
+    def get_json_array(self):
+        """
+        根据当前提取的通道数据生成 JSON 数据。每次调用都会返回下一个窗口的数据。
         
         返回：
         JSON 数据字符串，包含EEG信号数据。
         """
+        selected_data, _ = self.extract_selected_channels()
+        
         # 如果到达数据末尾，重新开始
-        if current_pos + window_size >= len(data):
-            current_pos = 0
+        if self.json_current_pos + self.json_window_size >= len(selected_data):
+            self.json_current_pos = 0
 
         # 获取当前窗口的数据
-        data_window = data[current_pos:current_pos + window_size]
+        data_window = selected_data[self.json_current_pos:self.json_current_pos + self.json_window_size]
         
         # 构建 JSON 数据
         json_data = {
             "mac": "d5:5:82:f0:1e:a",
-            "chn": str(data.shape[1]),  # 通道数
-            "pkn": current_pos,
+            "chn": str(len(data_window[0])),  # 通道数
+            "pkn": self.json_current_pos,
             "eeg": (data_window.flatten() * 5 + 32768).astype(int).tolist(),  # 展平并转换数据
             "acc": [67, -10, 638, -345]
         }
+        
+        # 更新位置
+        self.json_current_pos += self.json_window_size
+        
+        return json.dumps(json_data)
 
-        return json.dumps(json_data), current_pos + window_size
+    def process_and_visualize(self):
+        """
+        组合处理功能：
+        1. 获取JSON数据
+        2. 显示数据统计信息
+        3. 可视化EEG信号
+        """
+        # 1. 获取JSON数据并打印
+        json_data = self.get_json_array()
+        print("生成的JSON数据:")
+        print(json_data)
+        print("\n")
+        
+        # 2. 显示数据统计信息
+        self.print_data_info()
+        
+        # 3. 可视化EEG信号
+        self.plot_eeg_signals()
 
 def main():
-    # 数据文件路径
-    cnt_file = 'datasets/BCICIV_1_asc/BCICIV_calib_ds1a_cnt.txt'
-    mrk_file = 'datasets/BCICIV_1_asc/BCICIV_calib_ds1a_mrk.txt'
+    # 创建实例，使用默认数据文件路径
+    display = SignalReadJsonx()
     
-    # 加载数据
-    cnt_data, mrk_data = SignalReadJsonx.load_data(cnt_file, mrk_file)
-    
-    # 可视化数据 - 显示5个通道，窗口大小为1000个采样点
-    display = SignalReadJsonx(cnt_data, mrk_data, channels_to_plot=5, window_size=1000)
+    # 可视化数据
     # display.plot_eeg_signals()
     
-    # 提取指定通道数据
-    selected_cnt_data, channel_names = display.extract_selected_channels()
-    
-    # 可视化提取的通道数据
-    selected_display = SignalReadJsonx(selected_cnt_data, mrk_data, channels_to_plot=8, window_size=1000)
-    # selected_display.plot_eeg_signals()
-    
-    # 获取 JSON 数据
-    json_data = SignalReadJsonx.get_json_array(selected_cnt_data, window_size=10, current_pos=0)
+    # 获取JSON数据
+    json_data = display.get_json_array()
     print(json_data)
-    return json_data
+
+    # 处理和可视化数据
+    display.process_and_visualize()
 
 if __name__ == '__main__':
     main()
