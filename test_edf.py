@@ -91,7 +91,8 @@ class EdfVisualizer:
         
         self.current_position += self.window_size // 10  # 更新位置
         
-        return self.axes    
+        return self.axes  
+      
     def animate(self):
         """启动动画"""
         # 设置cache_frame_data=False来避免无限缓存
@@ -150,8 +151,8 @@ def create_visualizer(edf_file):
 
 if __name__ == "__main__":
     # 指定EDF文件路径
-    edf_file = "./training_data/mi_train_01.edf"  # 请替换为实际的EDF文件路径
-    
+    # edf_file = "./training_data/mi_train_01.edf"  # 请替换为实际的EDF文件路径
+    edf_file = "./training_data_curctrl/train_3.edf"  # 请替换为实际的EDF文件路径
     try:
         # 创建可视化器
         visualizer = create_visualizer(edf_file)
