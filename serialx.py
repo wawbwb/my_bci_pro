@@ -8,6 +8,7 @@ import constantValues as cv
 import debugPrinter as dp
 from signal_generator_json import SignalGeneratorJsonx
 from BCICIV_Generator import SignalReadJsonx
+from EDF_Generator import EdfGeneratorJsonx
 
 
 class SerialX(QObject):
@@ -89,7 +90,8 @@ class SerialX(QObject):
             self.evt_serial_cmd.emit(cv.EVT_SERIAL_OPEN_SUC)
             self.simulator_timer.start()
             #self.sj = SignalGeneratorJsonx()
-            self.sj = SignalReadJsonx()
+            #self.sj = SignalReadJsonx()
+            self.sj = EdfGeneratorJsonx()
 
             dp.dpt('use SignalGenerator')
             return 1
