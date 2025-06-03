@@ -9,8 +9,8 @@ rcParams['font.sans-serif'] = ['SimHei']  # 设置字体为黑体
 rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 class EdfGeneratorJsonx:
-    DEFAULT_EDF_FILE = "./training_data_curctrl/train_3.edf"
-    
+    DEFAULT_EDF_FILE = "./training_data_curctrl/train_2.edf"
+
     # 类变量，用于保存单例实例
     _instance = None
     
