@@ -329,9 +329,9 @@ def run_task(target_sequence=None, control_sequence=None):
 
     # 如果提供了控制序列，确保其长度足够
     if control_sequence is not None:
-        if len(control_sequence) < actual_trial_num * trial_time * 10:  # 假设每100ms一个控制信号
-            raise ValueError("控制序列长度不足")
-
+        required_length = actual_trial_num * 80  # 每个trial需要80个控制信号
+        if len(control_sequence) < required_length:
+            raise ValueError(f"控制序列长度不足，需要{required_length}个信号，但只提供了{len(control_sequence)}个")
     # LSL设置
     id_num = random.randint(1, 10000)
     name_str = 'psycho_marker_'+str(id_num)
@@ -427,22 +427,27 @@ Press any key to begin''')
         
         rr = 0
         cl = Clock()
-        control_idx = i * int(trial_time * 10)  # 每个trial的控制信号起始索引
+        control_idx = i * 80  # 每个trial固定80个控制信号
+        last_update_time = -1
+        update_interval = trial_time / 80  # 计算每个控制信号的时间间隔
         
         while cl.getTime() < trial_time:
             if 'escape' in event.getKeys():
                 win.close()
                 quit()
 
+            current_time = cl.getTime()
+            
             if control_sequence is not None:
-                # 从control_sequence获取控制信号
-                current_time = int(cl.getTime() * 10)  # 转换为100ms为单位的索引
-                if current_time >= 0 and current_time < trial_time * 10:
-                    d = [control_sequence[control_idx + current_time]]
+                # 计算当前应该使用第几个控制信号
+                current_signal_idx = int(current_time / update_interval)
+                if current_signal_idx > last_update_time and current_signal_idx < 80:
+                    d = [control_sequence[control_idx + current_signal_idx]]
+                    last_update_time = current_signal_idx
                 else:
                     continue
             else:
-                # 从LSL接收控制信号
+                # 从LSL接收控制信号，保持原有逻辑不变
                 if (inlets[0].name[:14] == 'curctrl_marker'):
                     ts, d = inlets[0].pull_data()
                     if not len(ts)>0:
@@ -521,21 +526,32 @@ Press any key to begin''')
     quit()
 
 if __name__ == '__main__':
-    # 示例：使用自定义目标序列和控制序列
+    # 示例：使用自定义目标序列
     custom_sequence = [12, 12, 11, 12, 11, 12, 11, 11, 12, 11, 12, 11, 12, 11, 12, 
-                       12, 11, 11, 12, 11, 11, 12, 11, 12, 12, 11, 11, 12, 11, 11]  # 下,下,上,下,上
+                       12, 11, 11, 12, 11, 11, 12, 11, 12, 12, 11, 11, 12, 11, 11]
     
-    # 生成示例控制序列 (每100ms一个控制信号)
-    # 使用 markers 中的值: mu_rhythm_high 向下移动, mu_rhythm_low 向上移动
+    # 生成控制序列 (每个trial固定80个控制信号)
     control_signals = []
-    signals_per_trial = int(trial_time * 10)  # 每个trial 10Hz的控制信号
+    signals_per_trial = 80  # 每个trial固定80个信号
     
+    # 为每个目标生成带有随机性的控制信号
+    import random
     for target in custom_sequence:
-        # 为每个trial生成控制信号
+        trial_signals = []
         if target == 11:  # 目标在上方，需要向上移动
-            trial_signals = [markers['mu_rhythm_low']] * signals_per_trial
+            # 70%的概率是向上的信号，30%的概率是向下的信号
+            for _ in range(signals_per_trial):
+                if random.random() < 0.9:  # 90%概率
+                    trial_signals.append(markers['mu_rhythm_low'])  # 向上信号
+                else:
+                    trial_signals.append(markers['mu_rhythm_high'])  # 向下信号
         else:  # 目标在下方，需要向下移动
-            trial_signals = [markers['mu_rhythm_high']] * signals_per_trial
+            # 70%的概率是向下的信号，10%的概率是向上的信号
+            for _ in range(signals_per_trial):
+                if random.random() < 0.9:  # 90%概率
+                    trial_signals.append(markers['mu_rhythm_high'])  # 向下信号
+                else:
+                    trial_signals.append(markers['mu_rhythm_low'])  # 向上信号
         control_signals.extend(trial_signals)
     
     # 运行任务
